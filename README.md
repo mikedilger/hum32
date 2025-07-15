@@ -7,8 +7,8 @@ In that vein it is similar to base32, zbase32, and bech32.
 Unlike those former solutions to this problem, we chose to use both uppercase and lowercase
 symbols, giving us we think more visual separation between characters.
 
-Unlike all but bech32, we add a checksum. Ours is 32-bytes long using xxHash's xxh32 function
-and performed on (and appended to) the data prior to 32-bit conversion.
+Unlike all but bech32, we add a checksum. Ours is 32 bits long using xxHash's xxh32 function
+and performed on (and appended to) the data prior to encoding.
 
 We also choose to optionally detect and automatically correct out-of-alphabet single-character
 mistakes based on visual similarity.
