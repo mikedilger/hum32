@@ -1,0 +1,10 @@
+[package]
+name = "hum32"
+version = "0.1.0"
+edition = "2024"
+authors = [ "Mike Dilger <mike@mikedilger.com>" ]
+description = "Human-friendly 32-bit encoding"
+license = "MIT"
+
+[dependencies]
+xxhash-rust = { version = "0.8", features = [ "xxh32" ] }
