@@ -1,19 +1,53 @@
 # hum32
 
-hum32 is a 32-bit encoding scheme that attempts to output human writable characters that
-are hard to mistake for other characters, correct mistakes, and detect errors via checksumming.
-In that vein it is similar to base32, zbase32, and bech32.
+hum32 is a 5-bit (32 character) encoding scheme that attempts to:
 
-Unlike those former solutions to this problem, we chose to use both uppercase and lowercase
-symbols, giving us we think more visual separation between characters.
+* Output human writable characters that are hard to mistake for other characters
+* Correct some mistakes automatically
+* Detect errors via a checksum
 
-Unlike all but bech32, we add a checksum. Ours is 32 bits long using xxHash's xxh32 function
-and performed on (and appended to) the data prior to encoding.
+In that vein it is similar to base32, zbase32, and bech32. We compare these as follows:
 
-We also choose to optionally detect and automatically correct out-of-alphabet single-character
-mistakes based on visual similarity.
+|Encoding|Chars Avoided       |Padding   |Checksum     |
+|--------|--------------------|----------|-------------|
+|base32  |0,1,8,9  uppercase  |yes       |no           |
+|zbase32 |0,l,v,2, uppercase  |no        |no           |
+|bech32  |1,b,i,o, uppercase  |no        |custom, poor |
+|bech32m |1,b,i,o, uppercase  |no        |custom       |
+|hum32   |g,i,o,s, samecase   |no        |xxHash       |
 
-Unlike base32, but like zbase32 and bech32, we do not waste space with padding characters.
+## Alphabet Choice
+
+Note that hum32 uses a mixture of uppercase and lowercase characters, but never allows
+both the uppercase and lowercase of the same character. We choose the case representation
+with the least visual ambiguity, for example we use uppercase 'L' because lower case 'l'
+looks like a '1' (and an 'i' or 'I').
+
+The full alphabet is: 123456789aBCdEFHJkLMNOPQRtUvWXYz
+
+We wrote code to determine this alphabet, it is available at `src/alphabet_choice.rs`
+and can be run with `cargo test choose_character_set -- --nocapture`
+We just swapped 'O' for '0'.
+
+## Checksum
+
+Prior to hum32, only bech32 and it's fixed bech32m provide a checksum.
+
+We provide a 32-bit checksum using xxHash's xxh32 function which is performed on and appended
+to the data prior to encoding. This may not be optimal for the kinds of errors humans make,
+but it is easy and very effective.
+
+## Automatic Correction
+
+Unlike any of the prior algorithms, we detect and correct bad input. This usually only happens
+when the case of the character is wrong. But other out-of-alphabet characters have substitutions
+too such as 'G' probably was a '6', etc.
+
+## Padding
+
+We do not pad.
+
+## Prefix support
 
 Like bech32 we support prefixes, separated in our case with a '0'.
 
@@ -54,20 +88,3 @@ Our character set is layed out as follows:
  +24   e  p  G  7  3  m  T  j
 ```
 
-## Visual similarity
-
-These character groups were used for visual similarity:
-
-```
-(a,o,O,0), (A,4), (5,S,s), (b,6), (B,8), (z,Z,2), (i,I,l,1), (u,U,v,V), (r,n), (r,v), (c,C),
-(j,J), (k,K), (m,M), (p,P), (s,S), (u,U), (v,V), (w,W), (x,X), (y,Y), (z,Z)
-```
-
-## Automatic corrections
-
-These corrections are applied automatically (wrong, corrected):
-
-```
-(A,4), (B,8), (I,1), (J,j), (K,k), (M,m), (P,p), (S,5), (W,w),
-(Y,7), (Z,2), (b,6), (i,1), (l,1), (r,R), (S,5), (x,X), (z,2)
-```

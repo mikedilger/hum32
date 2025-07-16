@@ -8,3 +8,6 @@ license = "MIT"
 
 [dependencies]
 xxhash-rust = { version = "0.8", features = [ "xxh32" ] }
+
+[dev-dependencies]
+rand = "0.9"

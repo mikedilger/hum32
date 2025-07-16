@@ -2,33 +2,22 @@
 
 extern crate alloc;
 
+#[cfg(test)]
+mod alphabet_choice;
+
 use alloc::string::String;
 use alloc::vec::Vec;
+
 use core::cmp::min;
 
-/*
- * The hum32 alphabet was chosen from numbers and both uppercase and lowercase letters, rather
- * than sticking to a single case as most others do (base32, zbase32, bech32). This lets us
- * make the symbols more unique.
- *
- * We avoid more than 1 character from any set of visually similar looking characters. We also
- * avoid similarity groups larger than 2, so that we can map wrong characters to their right
- * character when doing correction.
- *
- * These are the identified character-similarity groups:
- *
- * (a,o,O,0), (A,4), (5,S,s), (b,6), (B,8), (z,Z,2), (i,I,l,1), (u,U,v,V), (r,n), (r,v), (c,C),
- * (j,J), (k,K), (m,M), (p,P), (s,S), (u,U), (v,V), (w,W), (x,X), (y,Y), (z,Z)
- */
-
-const ALPHABET: &[u8] = b"cQ8dEH41kDgqFN2LX69y5hRwepG73mTj";
+const ALPHABET: &[u8] = b"123456789BCEFHJLMNOPQRUWXYadktvz";
 
 //       0  1  2  3  4  5  6  7
 //
-// +0    c  Q  8  d  E  H  4  1
-// +8    k  D  g  q  F  N  2  L
-// +16   X  6  9  y  5  h  R  w
-// +24   e  p  G  7  3  m  T  j
+// +0    1  2  3  4  5  6  7  8
+// +8    9  B  C  E  F  H  J  L
+// +16   M  N  O  P  Q  R  U  W
+// +24   X  Y  a  d  k  t  v  z
 
 /*   ASCII from byte 48 to byte 122 inclusive
      0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  :,  ;,  <,  =,  >,  ?,  @,  A,  B,  C,
@@ -39,10 +28,10 @@ const ALPHABET: &[u8] = b"cQ8dEH41kDgqFN2LX69y5hRwepG73mTj";
 
 #[rustfmt::skip]
 const INVERSE_STRICT: [i8; 75] = [
-    -1,  7, 14, 28,  6, 20, 17, 27,  2, 18, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-     9,  4, 12, 26,  5, -1, -1, -1, 15, -1, 13, -1, -1,  1, 22, -1, 30, -1, -1, -1,
-    16, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  0,  3, 24, -1, 10, 21, -1, 31,  8,
-    -1, 29, -1, -1, 25, 11, -1, -1, -1, -1, -1, 23, -1, 19, -1,
+    -1,  0,  1,  2,  3,  4,  5,  6,  7,  8, -1, -1, -1, -1, -1, -1, -1, -1,  9, 10,
+    -1, 11, 12, -1, 13, -1, 14, -1, 15, 16, 17, 18, 19, 20, 21, -1, -1, 22, -1, 23,
+    24, 25, -1, -1, -1, -1, -1, -1, -1, 26, -1, -1, 27, -1, -1, -1, -1, -1, -1, 28,
+    -1, -1, -1, -1, -1, -1, -1, -1, 29, -1, 30, -1, -1, -1, 31,
 ];
 
 /// This inverse function allows out-of-alphabet characters that might be mistaken for
@@ -52,10 +41,10 @@ const INVERSE_STRICT: [i8; 75] = [
 ///   (Y,7), (Z,2), (b,6), (i,1), (l,1), (r,R), (S,5), (x,X), (z,2)
 #[rustfmt::skip]
 const INVERSE_CORRECTED: [i8; 75] = [
-    -1,  7, 14, 28,  6, 20, 17, 27,  2, 18, -1, -1, -1, -1, -1, -1, -1,  6,  2,  0,
-     9,  4, 12, 26,  5,  7, 31,  8, 15, 29, 13, -1, 25,  1, 22, 20, 30, -1, -1, 23,
-    16, 27, 14, -1, -1, -1, -1, -1, -1, -1, 17,  0,  3, 24, -1, 10, 21,  7, 31,  8,
-     7, 29, -1, -1, 25, 11, 22, 20, -1, -1, -1, 23, 16, 19, 14,
+    18,  0,  1,  2,  3,  4,  5,  6,  7,  8, -1, -1, -1, -1, -1, -1, -1, 26,  9, 10,
+    27, 11, 12,  5, 13,  0, 14, 28, 15, 16, 17, 18, 19, 20, 21,  4, 29, 22, 30, 23,
+    24, 25, 31, -1, -1, -1, -1, -1, -1, 26,  9, 10, 27, 11, 12,  8, 13,  0, 14, 28,
+    15, 16, 17, 18, 19, 20, 21,  4, 29, 22, 30, 23, 24, 25, 31,
 ];
 
 // This seed was just made up. We should test seeds like bech32 did to see which one
@@ -225,15 +214,15 @@ mod test {
     #[test]
     fn test_vectors() {
         let vectors = [
-            (b"".as_slice(), "R9DNRdc"),
+            (b"".as_slice(), "UOBHU41"),
             (
                 b"The quick brown fox jumps over the lazy dog.".as_slice(),
-                "g654gkd62h5R4GpcFDp4Tm72EQy4TTQcNDGRG3dyEQwwFpq9EQG4XpDcN6Xw5TDcF6wR2qXdX3eNR",
+                "CNQ7C94NJRQU7aY1FBY7vtdJ52P7vv21HBaUak4P52WWFYEO52a7MYB1HNMWQvB1FNWUJEM4MkXHU",
             ),
-            (b"GM".as_slice(), "km4em3GNy3"),
+            (b"GM".as_slice(), "9t7XtkaHPk"),
             (&[246, 11, 226, 142, 73, 141, 43, 201, 119, 153, 142, 112, 11, 216, 255, 247,
               149, 36, 188, 231, 3, 176, 115, 77, 88, 172, 174, 148, 25, 78, 190, 236],
-             "TeHTHd9D65h39m3p6pecwR1jTTg9DL11c2e14ygeh9wDk4g2w7R2y6Q235"),
+             "vX6v64OBNQRkOtkYNYX1WU8zvvCOBL881JX87PCXROWB97CJWdUJPN2JkQ"),
         ];
 
         for (input, answer) in vectors.iter() {
@@ -249,22 +238,27 @@ mod test {
 
     #[test]
     fn test_corrections() {
-        // actual = "g654gkd62h5R4GpcFDp4Tm72EQy4TTQcNDGRG3dyEQwwFpq9EQG4XpDcN6Xw5TDcF6wR2qXdX3eNR";
-        let wrong = "g65Agkd6Zh5R4GpCFDp4TmYZEQy4TTQcNDGRG3dyEQwwFpq9EQG4xpDcN6xw5TDcF6wR2qXdX3eNR";
-        //              ^    ^      ^      ^^                            ^     ^                   ;
-        assert_eq!(
-            b"The quick brown fox jumps over the lazy dog.".as_slice(),
-            decode(wrong, false).unwrap()
-        );
+        // actual = "vX6v64OBNQRkOtkYNYX1WU8zvvCOBL881JX87PCXROWB97CJWdUJPN2JkQ";
+        let wrongcase = "Vx6V64obnqrKoTKynyx1wu8ZVVcobl881jx87pcxrowb97cjwDujpn2jKq";
 
-        // actual = "TeHTHd9D65h39m3p6pecwR1jTTg9DL11c2e14ygeh9wDk4g2w7R2y6Q235";
-        let wrong = "TeHTHd9D6Sh39m3P6peCwRIjTTg9DLllc2e1Aygeh9wDk4g2w7R2y6Q235";
-        //                    ^     ^   ^  ^       ^^    ^                      ;
         assert_eq!(
             [246, 11, 226, 142, 73, 141, 43, 201, 119, 153, 142, 112, 11, 216, 255, 247,
              149, 36, 188, 231, 3, 176, 115, 77, 88, 172, 174, 148, 25, 78, 190, 236].as_slice(),
-            decode(wrong, false).unwrap()
+            decode(wrongcase, false).unwrap()
         );
+        // 0 -> O
+        // G -> 6 <0-00 no 6
+        // S -> 5
+        // i -> 1
+        // s -> 5
 
+
+        //     actual = "prefix0CtQ7CdN1H6W31t49FQM77ddRJBYUC94LFXM7MtEHF6W31YEUFRW89kY1L6WWC94JFROU994252W7CtY17QUU5aEQ52OUkXdLFNQUkYY1JHNUMYEHFQU31vELJQM7QtEPJMM7aXEEFQM7vdP66Xa5CUUk"
+        let wrongsubs = "prefix0CtQ7CdNiHGW3it49FQM77ddRJBYUC94LFXM7MtEHFGW3iYEUFRW89kYiLGWWC94JFR0U9942S2W7CtYi7QUUsaEQS20UkXdLFNQUkYYiJHNUMYEHFQU3ivELJQM7QtEPJMM7aXEEFQM7vdPGGXasCUUk";
+
+        assert_eq!(
+            b"When in the course of human events you need a new 5-bit encoding scheme, you just make one.".as_slice(),
+            decode(wrongsubs, false).unwrap()
+        );
     }
 }
